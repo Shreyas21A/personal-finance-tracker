@@ -59,8 +59,21 @@ router.delete('/:id', auth, async (req, res) => {
     if (transaction.user.toString() !== req.user.id) {
       return res.status(401).json({ message: 'Not authorized' });
     }
-    await transaction.remove();
+    await transaction.deleteOne();
     res.json({ message: 'Transaction deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get transactions by category (for chart)
+router.get('/by-category', auth, async (req, res) => {
+  try {
+    const transactions = await Transaction.aggregate([
+      { $match: { user: new mongoose.Types.ObjectId(req.user.id), type: 'expense' } },
+      { $group: { _id: '$category', total: { $sum: '$amount' } } },
+    ]);
+    res.json(transactions);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
