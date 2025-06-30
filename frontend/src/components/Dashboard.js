@@ -4,49 +4,73 @@ import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import TransactionForm from './TransactionForm';
 import TransactionList from './TransactionList';
+import { useNavigate } from 'react-router-dom';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 function Dashboard() {
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+
+  const fetchChartData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Please log in to view the dashboard');
+        return;
+      }
+      const res = await axios.get('http://localhost:5000/api/transactions/by-category', {
+        headers: { 'x-auth-token': token },
+      });
+      const labels = res.data.map(item => item._id);
+      const data = res.data.map(item => item.total);
+      setChartData({
+        labels,
+        datasets: [
+          {
+            label: 'Spending by Category',
+            data,
+            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+          },
+        ],
+      });
+      setError(null);
+    } catch (error) {
+      console.error('Fetch chart data error:', error);
+      setError(error.response?.data?.message || 'Failed to fetch chart data');
+    }
+  };
 
   useEffect(() => {
-    const fetchChartData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:5000/api/transactions/by-category', {
-          headers: { 'x-auth-token': token },
-        });
-        const labels = res.data.map(item => item._id);
-        const data = res.data.map(item => item.total);
-        setChartData({
-          labels,
-          datasets: [
-            {
-              label: 'Spending by Category',
-              data,
-              backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
-            },
-          ],
-        });
-      } catch (error) {
-        console.error(error.response.data);
-        alert('Failed to fetch chart data: ' + error.response.data.message);
-      }
-    };
     fetchChartData();
   }, []);
 
   const handleAddTransaction = () => {
-    // Trigger chart data refresh
-    fetchChartData();
+    fetchChartData(); // Refresh chart after adding transaction
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
   };
 
   return (
     <div className="container">
       <h2>Dashboard</h2>
-      <div style={{ maxWidth: '400px', margin: '20px auto' }}>
-        <Pie data={chartData} />
+      <button
+        style={{ position: 'absolute', top: '10px', right: '10px' }}
+        onClick={handleLogout}
+      >
+        Logout
+      </button>
+      {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
+      <div className="chart-container">
+        {chartData.labels.length > 0 ? (
+          <Pie data={chartData} />
+        ) : (
+          <p>No expense data available. Add some transactions!</p>
+        )}
       </div>
       <TransactionForm onAddTransaction={handleAddTransaction} />
       <TransactionList />

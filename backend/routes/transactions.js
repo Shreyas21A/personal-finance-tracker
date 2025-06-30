@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const Transaction = require('../models/Transaction');
+const mongoose = require('mongoose');
 
 // Create transaction
 router.post('/', auth, async (req, res) => {
@@ -17,6 +18,7 @@ router.post('/', auth, async (req, res) => {
     await transaction.save();
     res.json(transaction);
   } catch (error) {
+    console.error('Create transaction error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -27,6 +29,7 @@ router.get('/', auth, async (req, res) => {
     const transactions = await Transaction.find({ user: req.user.id }).sort({ date: -1 });
     res.json(transactions);
   } catch (error) {
+    console.error('Get transactions error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -47,6 +50,7 @@ router.put('/:id', auth, async (req, res) => {
     );
     res.json(transaction);
   } catch (error) {
+    console.error('Update transaction error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -59,9 +63,10 @@ router.delete('/:id', auth, async (req, res) => {
     if (transaction.user.toString() !== req.user.id) {
       return res.status(401).json({ message: 'Not authorized' });
     }
-    await transaction.deleteOne();
+    await Transaction.findByIdAndDelete(req.params.id);
     res.json({ message: 'Transaction deleted' });
   } catch (error) {
+    console.error('Delete transaction error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -75,6 +80,7 @@ router.get('/by-category', auth, async (req, res) => {
     ]);
     res.json(transactions);
   } catch (error) {
+    console.error('By-category error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
