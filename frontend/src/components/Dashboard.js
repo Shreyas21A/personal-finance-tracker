@@ -4,6 +4,7 @@ import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import TransactionForm from './TransactionForm';
 import TransactionList from './TransactionList';
+import CategoryManager from './CategoryManager';
 import { useNavigate } from 'react-router-dom';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -95,6 +96,7 @@ function Dashboard() {
           <p>No expense data available. Add some transactions!</p>
         )}
       </div>
+      <CategoryManager />
       <TransactionForm onAddTransaction={handleAddTransaction} />
       <TransactionList />
     </div>
