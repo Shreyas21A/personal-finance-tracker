@@ -15,7 +15,7 @@ function CategoryManager() {
         setCategories(res.data);
       } catch (error) {
         console.error(error.response.data);
-        alert('Failed to fetch categories: ' + error.response.data.message);
+        alert('Failed to fetch categories: ' + (error.response?.data?.message || 'Server error'));
       }
     };
     fetchCategories();
@@ -34,7 +34,7 @@ function CategoryManager() {
       setName('');
     } catch (error) {
       console.error(error.response.data);
-      alert('Failed to add category: ' + error.response.data.message);
+      alert('Failed to add category: ' + (error.response?.data?.message || 'Server error'));
     }
   };
 
@@ -47,7 +47,7 @@ function CategoryManager() {
       setCategories(categories.filter((category) => category._id !== id));
     } catch (error) {
       console.error(error.response.data);
-      alert('Failed to delete category: ' + error.response.data.message);
+      alert('Failed to delete category: ' + (error.response?.data?.message || 'Server error'));
     }
   };
 

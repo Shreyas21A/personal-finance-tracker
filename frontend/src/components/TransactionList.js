@@ -1,28 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
-function TransactionList() {
+function TransactionList({ onCategoryDelete }) {
   const [transactions, setTransactions] = useState([]);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [filterType, setFilterType] = useState('all');
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
-    const fetchTransactions = async () => {
+    const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:5000/api/transactions', {
-          headers: { 'x-auth-token': token },
-        });
-        let sortedTransactions = [...res.data];
+        const [transRes, catRes] = await Promise.all([
+          axios.get('http://localhost:5000/api/transactions', {
+            headers: { 'x-auth-token': token },
+          }),
+          axios.get('http://localhost:5000/api/categories', {
+            headers: { 'x-auth-token': token },
+          }),
+        ]);
+        let sortedTransactions = [...transRes.data];
         
-        // Apply filter
         if (filterType !== 'all') {
           sortedTransactions = sortedTransactions.filter(t => t.type === filterType);
         }
 
-        // Apply sorting
         sortedTransactions.sort((a, b) => {
           if (sortBy === 'date') {
             return sortOrder === 'asc' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date);
@@ -35,13 +41,14 @@ function TransactionList() {
         });
 
         setTransactions(sortedTransactions);
+        setCategories(catRes.data);
       } catch (error) {
         console.error(error.response.data);
-        alert('Failed to fetch transactions: ' + error.response.data.message);
+        alert('Failed to fetch transactions: ' + (error.response?.data?.message || 'Server error'));
       }
     };
-    fetchTransactions();
-  }, [sortBy, sortOrder, filterType]);
+    fetchData();
+  }, [sortBy, sortOrder, filterType, onCategoryDelete]);
 
   const handleDelete = async (id) => {
     try {
@@ -52,12 +59,12 @@ function TransactionList() {
       setTransactions(transactions.filter((transaction) => transaction._id !== id));
     } catch (error) {
       console.error(error.response.data);
-      alert('Failed to delete transaction: ' + error.response.data.message);
+      alert('Failed to delete transaction: ' + (error.response?.data?.message || 'Server error'));
     }
   };
 
   const handleEdit = (transaction) => {
-    setEditingTransaction(transaction);
+    setEditingTransaction({ ...transaction, date: new Date(transaction.date) });
   };
 
   const handleUpdate = async (e) => {
@@ -75,7 +82,7 @@ function TransactionList() {
       setEditingTransaction(null);
     } catch (error) {
       console.error(error.response.data);
-      alert('Failed to update transaction: ' + error.response.data.message);
+      alert('Failed to update transaction: ' + (error.response?.data?.message || 'Server error'));
     }
   };
 
@@ -115,13 +122,12 @@ function TransactionList() {
               onChange={handleEditChange}
               required
             />
-            <input
-              type="text"
-              name="category"
-              value={editingTransaction.category}
-              onChange={handleEditChange}
-              required
-            />
+            <select name="category" value={editingTransaction.category} onChange={handleEditChange} required>
+              <option value="">Select Category</option>
+              {categories.map((cat) => (
+                <option key={cat._id} value={cat.name}>{cat.name}</option>
+              ))}
+            </select>
             <input
               type="text"
               name="description"
@@ -132,6 +138,12 @@ function TransactionList() {
               <option value="expense">Expense</option>
               <option value="income">Income</option>
             </select>
+            <DatePicker
+              selected={editingTransaction.date}
+              onChange={(date) => setEditingTransaction({ ...editingTransaction, date })}
+              dateFormat="MM/dd/yyyy"
+              placeholderText="Select Date"
+            />
             <button type="submit">Update</button>
             <button type="button" onClick={() => setEditingTransaction(null)}>Cancel</button>
           </form>
@@ -145,7 +157,7 @@ function TransactionList() {
           >
             {transaction.description || 'No description'} - ${transaction.amount} ({transaction.category}, {transaction.type}) - {new Date(transaction.date).toLocaleDateString()}
             <div>
-              <button onClick={() => handleEdit(transaction)}>Edit</button>
+              <button className="edit" onClick={() => handleEdit(transaction)}>Edit</button>
               <button onClick={() => handleDelete(transaction._id)}>Delete</button>
             </div>
           </li>

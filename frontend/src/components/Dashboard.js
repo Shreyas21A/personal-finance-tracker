@@ -13,6 +13,7 @@ function Dashboard() {
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
   const [error, setError] = useState(null);
   const [summary, setSummary] = useState({ totalIncome: 0, totalExpenses: 0, balance: 0 });
+  const [categoryUpdate, setCategoryUpdate] = useState(0);
   const navigate = useNavigate();
 
   const fetchChartData = async () => {
@@ -61,11 +62,15 @@ function Dashboard() {
   useEffect(() => {
     fetchChartData();
     fetchSummary();
-  }, []);
+  }, [categoryUpdate]);
 
   const handleAddTransaction = () => {
     fetchChartData();
     fetchSummary();
+  };
+
+  const handleCategoryDelete = () => {
+    setCategoryUpdate(prev => prev + 1);
   };
 
   const handleLogout = () => {
@@ -96,9 +101,9 @@ function Dashboard() {
           <p>No expense data available. Add some transactions!</p>
         )}
       </div>
-      <CategoryManager />
+      <CategoryManager onCategoryDelete={handleCategoryDelete} />
       <TransactionForm onAddTransaction={handleAddTransaction} />
-      <TransactionList />
+      <TransactionList onCategoryDelete={handleCategoryDelete} />
     </div>
   );
 }
