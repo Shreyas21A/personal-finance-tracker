@@ -85,4 +85,26 @@ router.get('/by-category', auth, async (req, res) => {
   }
 });
 
+// Get transaction summary (total income, expenses, balance)
+router.get('/summary', auth, async (req, res) => {
+  try {
+    const transactions = await Transaction.aggregate([
+      { $match: { user: new mongoose.Types.ObjectId(req.user.id) } },
+      {
+        $group: {
+          _id: null,
+          totalIncome: { $sum: { $cond: [{ $eq: ['$type', 'income'] }, '$amount', 0] } },
+          totalExpenses: { $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] } },
+        },
+      },
+    ]);
+    const summary = transactions[0] || { totalIncome: 0, totalExpenses: 0 };
+    summary.balance = summary.totalIncome - summary.totalExpenses;
+    res.json(summary);
+  } catch (error) {
+    console.error('Summary error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
