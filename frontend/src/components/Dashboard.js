@@ -11,6 +11,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 function Dashboard() {
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
   const [error, setError] = useState(null);
+  const [summary, setSummary] = useState({ totalIncome: 0, totalExpenses: 0, balance: 0 });
   const navigate = useNavigate();
 
   const fetchChartData = async () => {
@@ -42,12 +43,28 @@ function Dashboard() {
     }
   };
 
+  const fetchSummary = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await axios.get('http://localhost:5000/api/transactions/summary', {
+        headers: { 'x-auth-token': token },
+      });
+      setSummary(res.data);
+    } catch (error) {
+      console.error('Fetch summary error:', error);
+      setError(error.response?.data?.message || 'Failed to fetch summary');
+    }
+  };
+
   useEffect(() => {
     fetchChartData();
+    fetchSummary();
   }, []);
 
   const handleAddTransaction = () => {
-    fetchChartData(); // Refresh chart after adding transaction
+    fetchChartData();
+    fetchSummary();
   };
 
   const handleLogout = () => {
@@ -65,6 +82,12 @@ function Dashboard() {
         Logout
       </button>
       {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
+      <div className="summary">
+        <h3>Summary</h3>
+        <p>Total Income: ${summary.totalIncome}</p>
+        <p>Total Expenses: ${summary.totalExpenses}</p>
+        <p>Balance: ${summary.balance}</p>
+      </div>
       <div className="chart-container">
         {chartData.labels.length > 0 ? (
           <Pie data={chartData} />
