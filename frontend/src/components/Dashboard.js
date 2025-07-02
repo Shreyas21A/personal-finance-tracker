@@ -4,8 +4,8 @@ import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import TransactionForm from './TransactionForm';
 import TransactionList from './TransactionList';
-import CategoryManager from './CategoryManager';
 import { useNavigate } from 'react-router-dom';
+import { Container, Typography, Box, Alert, Button } from '@mui/material';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -13,7 +13,6 @@ function Dashboard() {
   const [chartData, setChartData] = useState({ labels: [], datasets: [] });
   const [error, setError] = useState(null);
   const [summary, setSummary] = useState({ totalIncome: 0, totalExpenses: 0, balance: 0 });
-  const [categoryUpdate, setCategoryUpdate] = useState(0);
   const navigate = useNavigate();
 
   const fetchChartData = async () => {
@@ -62,15 +61,11 @@ function Dashboard() {
   useEffect(() => {
     fetchChartData();
     fetchSummary();
-  }, [categoryUpdate]);
+  }, []);
 
   const handleAddTransaction = () => {
     fetchChartData();
     fetchSummary();
-  };
-
-  const handleCategoryDelete = () => {
-    setCategoryUpdate(prev => prev + 1);
   };
 
   const handleLogout = () => {
@@ -79,32 +74,36 @@ function Dashboard() {
   };
 
   return (
-    <div className="container">
-      <h2>Dashboard</h2>
-      <button
-        style={{ position: 'absolute', top: '10px', right: '10px' }}
-        onClick={handleLogout}
-      >
-        Logout
-      </button>
-      {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
-      <div className="summary">
-        <h3>Summary</h3>
-        <p>Total Income: ${summary.totalIncome}</p>
-        <p>Total Expenses: ${summary.totalExpenses}</p>
-        <p>Balance: ${summary.balance}</p>
-      </div>
-      <div className="chart-container">
-        {chartData.labels.length > 0 ? (
-          <Pie data={chartData} />
-        ) : (
-          <p>No expense data available. Add some transactions!</p>
-        )}
-      </div>
-      <CategoryManager onCategoryDelete={handleCategoryDelete} />
-      <TransactionForm onAddTransaction={handleAddTransaction} />
-      <TransactionList onCategoryDelete={handleCategoryDelete} />
-    </div>
+    <Container maxWidth="md">
+      <Box sx={{ mt: 4, mb: 4 }}>
+        <Typography variant="h4" gutterBottom align="center">
+          Dashboard
+        </Typography>
+        <Button
+          variant="outlined"
+          onClick={handleLogout}
+          sx={{ position: 'absolute', top: 80, right: 16 }}
+        >
+          Logout
+        </Button>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <Box sx={{ mb: 4, textAlign: 'center' }}>
+          <Typography variant="h6">Summary</Typography>
+          <Typography>Total Income: ${summary.totalIncome}</Typography>
+          <Typography>Total Expenses: ${summary.totalExpenses}</Typography>
+          <Typography>Balance: ${summary.balance}</Typography>
+        </Box>
+        <Box sx={{ maxWidth: 400, mx: 'auto', mb: 4 }}>
+          {chartData.labels.length > 0 ? (
+            <Pie data={chartData} />
+          ) : (
+            <Typography>No expense data available. Add some transactions!</Typography>
+          )}
+        </Box>
+        <TransactionForm onAddTransaction={handleAddTransaction} />
+        <TransactionList />
+      </Box>
+    </Container>
   );
 }
 

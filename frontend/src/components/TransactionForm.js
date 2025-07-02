@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { TextField, Select, MenuItem, Button, Box, Typography, FormControl, InputLabel } from '@mui/material';
 
 function TransactionForm({ onAddTransaction }) {
   const [amount, setAmount] = useState('');
@@ -49,41 +50,62 @@ function TransactionForm({ onAddTransaction }) {
   };
 
   return (
-    <div className="container">
-      <h3>Add Transaction</h3>
-      <form onSubmit={handleSubmit}>
-        <input
+    <Box sx={{ mb: 4 }}>
+      <Typography variant="h6" gutterBottom>
+        Add Transaction
+      </Typography>
+      <Box component="form" onSubmit={handleSubmit}>
+        <TextField
+          label="Amount"
           type="number"
-          placeholder="Amount"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
+          fullWidth
+          margin="normal"
           required
         />
-        <select value={category} onChange={(e) => setCategory(e.target.value)} required>
-          <option value="">Select Category</option>
-          {categories.map((cat) => (
-            <option key={cat._id} value={cat.name}>{cat.name}</option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="Description"
+        <FormControl fullWidth margin="normal">
+          <InputLabel>Category</InputLabel>
+          <Select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            required
+          >
+            <MenuItem value="">Select Category</MenuItem>
+            {categories.map((cat) => (
+              <MenuItem key={cat._id} value={cat.name}>{cat.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <TextField
+          label="Description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          fullWidth
+          margin="normal"
         />
-        <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="expense">Expense</option>
-          <option value="income">Income</option>
-        </select>
+        <FormControl fullWidth margin="normal">
+          <InputLabel>Type</InputLabel>
+          <Select
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+          >
+            <MenuItem value="expense">Expense</MenuItem>
+            <MenuItem value="income">Income</MenuItem>
+          </Select>
+        </FormControl>
         <DatePicker
           selected={date}
           onChange={(date) => setDate(date)}
           dateFormat="MM/dd/yyyy"
           placeholderText="Select Date"
+          customInput={<TextField fullWidth margin="normal" label="Date" />}
         />
-        <button type="submit">Add</button>
-      </form>
-    </div>
+        <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
+          Add
+        </Button>
+      </Box>
+    </Box>
   );
 }
 

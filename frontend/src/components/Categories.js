@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Container, Typography, Box, TextField, Button, List, ListItem, ListItemText } from '@mui/material';
 
-function CategoryManager() {
+function Categories() {
   const [categories, setCategories] = useState([]);
   const [name, setName] = useState('');
 
@@ -9,6 +10,7 @@ function CategoryManager() {
     const fetchCategories = async () => {
       try {
         const token = localStorage.getItem('token');
+        if (!token) return;
         const res = await axios.get('http://localhost:5000/api/categories', {
           headers: { 'x-auth-token': token },
         });
@@ -52,28 +54,41 @@ function CategoryManager() {
   };
 
   return (
-    <div className="container">
-      <h3>Manage Categories</h3>
-      <form onSubmit={handleAdd}>
-        <input
-          type="text"
-          placeholder="Category Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        <button type="submit">Add Category</button>
-      </form>
-      <ul>
-        {categories.map((category) => (
-          <li key={category._id}>
-            {category.name}
-            <button onClick={() => handleDelete(category._id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Container maxWidth="sm">
+      <Box sx={{ mt: 4, mb: 4 }}>
+        <Typography variant="h4" gutterBottom align="center">
+          Manage Categories
+        </Typography>
+        <Box component="form" onSubmit={handleAdd} sx={{ mb: 4 }}>
+          <TextField
+            label="Category Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            fullWidth
+            margin="normal"
+            required
+          />
+          <Button type="submit" variant="contained" fullWidth>
+            Add Category
+          </Button>
+        </Box>
+        <List>
+          {categories.map((category) => (
+            <ListItem
+              key={category._id}
+              secondaryAction={
+                <Button variant="contained" color="error" onClick={() => handleDelete(category._id)}>
+                  Delete
+                </Button>
+              }
+            >
+              <ListItemText primary={category.name} />
+            </ListItem>
+          ))}
+        </List>
+      </Box>
+    </Container>
   );
 }
 
-export default CategoryManager;
+export default Categories;

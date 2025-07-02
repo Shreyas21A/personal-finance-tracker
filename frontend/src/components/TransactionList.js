@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { Box, Typography, List, ListItem, ListItemText, Button, Select, MenuItem, FormControl, InputLabel, TextField } from '@mui/material';
 
-function TransactionList({ onCategoryDelete }) {
+function TransactionList() {
   const [transactions, setTransactions] = useState([]);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -48,7 +49,7 @@ function TransactionList({ onCategoryDelete }) {
       }
     };
     fetchData();
-  }, [sortBy, sortOrder, filterType, onCategoryDelete]);
+  }, [sortBy, sortOrder, filterType]);
 
   const handleDelete = async (id) => {
     try {
@@ -91,79 +92,117 @@ function TransactionList({ onCategoryDelete }) {
   };
 
   return (
-    <div className="container">
-      <h3>Transactions</h3>
-      <div>
-        <label>Sort by: </label>
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="date">Date</option>
-          <option value="amount">Amount</option>
-          <option value="category">Category</option>
-        </select>
-        <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
-          <option value="asc">Ascending</option>
-          <option value="desc">Descending</option>
-        </select>
-        <label> Filter: </label>
-        <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-          <option value="all">All</option>
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
-        </select>
-      </div>
+    <Box sx={{ mb: 4 }}>
+      <Typography variant="h6" gutterBottom>
+        Transactions
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        <FormControl sx={{ minWidth: 120 }}>
+          <InputLabel>Sort By</InputLabel>
+          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <MenuItem value="date">Date</MenuItem>
+            <MenuItem value="amount">Amount</MenuItem>
+            <MenuItem value="category">Category</MenuItem>
+          </Select>
+        </FormControl>
+        <FormControl sx={{ minWidth: 120 }}>
+          <InputLabel>Order</InputLabel>
+          <Select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+            <MenuItem value="asc">Ascending</MenuItem>
+            <MenuItem value="desc">Descending</MenuItem>
+          </Select>
+        </FormControl>
+        <FormControl sx={{ minWidth: 120 }}>
+          <InputLabel>Filter</InputLabel>
+          <Select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="income">Income</MenuItem>
+            <MenuItem value="expense">Expense</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
       {editingTransaction && (
-        <div>
-          <h4>Edit Transaction</h4>
-          <form onSubmit={handleUpdate}>
-            <input
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6">Edit Transaction</Typography>
+          <Box component="form" onSubmit={handleUpdate}>
+            <TextField
+              label="Amount"
               type="number"
               name="amount"
               value={editingTransaction.amount}
               onChange={handleEditChange}
+              fullWidth
+              margin="normal"
               required
             />
-            <select name="category" value={editingTransaction.category} onChange={handleEditChange} required>
-              <option value="">Select Category</option>
-              {categories.map((cat) => (
-                <option key={cat._id} value={cat.name}>{cat.name}</option>
-              ))}
-            </select>
-            <input
-              type="text"
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Category</InputLabel>
+              <Select
+                name="category"
+                value={editingTransaction.category}
+                onChange={handleEditChange}
+                required
+              >
+                <MenuItem value="">Select Category</MenuItem>
+                {categories.map((cat) => (
+                  <MenuItem key={cat._id} value={cat.name}>{cat.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="Description"
               name="description"
               value={editingTransaction.description}
               onChange={handleEditChange}
+              fullWidth
+              margin="normal"
             />
-            <select name="type" value={editingTransaction.type} onChange={handleEditChange}>
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-            </select>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Type</InputLabel>
+              <Select
+                name="type"
+                value={editingTransaction.type}
+                onChange={handleEditChange}
+              >
+                <MenuItem value="expense">Expense</MenuItem>
+                <MenuItem value="income">Income</MenuItem>
+              </Select>
+            </FormControl>
             <DatePicker
               selected={editingTransaction.date}
               onChange={(date) => setEditingTransaction({ ...editingTransaction, date })}
               dateFormat="MM/dd/yyyy"
-              placeholderText="Select Date"
+              customInput={<TextField fullWidth margin="normal" label="Date" />}
             />
-            <button type="submit">Update</button>
-            <button type="button" onClick={() => setEditingTransaction(null)}>Cancel</button>
-          </form>
-        </div>
+            <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+              <Button type="submit" variant="contained">Update</Button>
+              <Button variant="outlined" onClick={() => setEditingTransaction(null)}>Cancel</Button>
+            </Box>
+          </Box>
+        </Box>
       )}
-      <ul>
+      <List>
         {transactions.map((transaction) => (
-          <li
+          <ListItem
             key={transaction._id}
-            style={{ backgroundColor: transaction.amount > 100 ? '#ffcccc' : 'transparent' }}
+            sx={{ bgcolor: transaction.amount > 100 ? '#ffcccc' : 'transparent' }}
           >
-            {transaction.description || 'No description'} - ${transaction.amount} ({transaction.category}, {transaction.type}) - {new Date(transaction.date).toLocaleDateString()}
-            <div>
-              <button className="edit" onClick={() => handleEdit(transaction)}>Edit</button>
-              <button onClick={() => handleDelete(transaction._id)}>Delete</button>
-            </div>
-          </li>
+            <ListItemText
+              primary={`${transaction.description || 'No description'} - $${transaction.amount}`}
+              secondary={`${transaction.category}, ${transaction.type} - ${new Date(transaction.date).toLocaleDateString()}`}
+            />
+            <Box>
+              <Button variant="contained" color="primary" sx={{ mr: 1 }} onClick={() => handleEdit(transaction)}>
+                Edit
+              </Button>
+              <Button variant="contained" color="error" onClick={() => handleDelete(transaction._id)}>
+                Delete
+              </Button>
+            </Box>
+          </ListItem>
         ))}
-      </ul>
-    </div>
+      </List>
+    </Box>
   );
 }
 
