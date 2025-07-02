@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { TextField, Select, MenuItem, Button, Box, Typography, FormControl, InputLabel } from '@mui/material';
+import { TextField, Select, MenuItem, Button, Box, Typography, FormControl, InputLabel, Card, CardContent } from '@mui/material';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
 
 function TransactionForm({ onAddTransaction }) {
   const [amount, setAmount] = useState('');
@@ -21,7 +22,6 @@ function TransactionForm({ onAddTransaction }) {
         });
         setCategories(res.data);
       } catch (error) {
-        console.error(error.response.data);
         alert('Failed to fetch categories: ' + (error.response?.data?.message || 'Server error'));
       }
     };
@@ -44,68 +44,77 @@ function TransactionForm({ onAddTransaction }) {
       setType('expense');
       setDate(new Date());
     } catch (error) {
-      console.error(error.response.data);
       alert('Failed to add transaction: ' + (error.response?.data?.message || 'Server error'));
     }
   };
 
   return (
-    <Box sx={{ mb: 4 }}>
-      <Typography variant="h6" gutterBottom>
-        Add Transaction
-      </Typography>
-      <Box component="form" onSubmit={handleSubmit}>
-        <TextField
-          label="Amount"
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          fullWidth
-          margin="normal"
-          required
-        />
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Category</InputLabel>
-          <Select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+    <Card>
+      <CardContent>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <AddCircleIcon color="primary" sx={{ mr: 1 }} />
+          <Typography variant="h6">Add Transaction</Typography>
+        </Box>
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            label="Amount"
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            fullWidth
+            margin="normal"
             required
+            variant="outlined"
+          />
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              required
+            >
+              <MenuItem value="">Select Category</MenuItem>
+              {categories.map((cat) => (
+                <MenuItem key={cat._id} value={cat.name}>{cat.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            fullWidth
+            margin="normal"
+            variant="outlined"
+          />
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Type</InputLabel>
+            <Select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+            >
+              <MenuItem value="expense">Expense</MenuItem>
+              <MenuItem value="income">Income</MenuItem>
+            </Select>
+          </FormControl>
+          <DatePicker
+            selected={date}
+            onChange={(date) => setDate(date)}
+            dateFormat="MM/dd/yyyy"
+            customInput={<TextField fullWidth margin="normal" label="Date" variant="outlined" />}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            color="secondary"
+            fullWidth
+            sx={{ mt: 2 }}
           >
-            <MenuItem value="">Select Category</MenuItem>
-            {categories.map((cat) => (
-              <MenuItem key={cat._id} value={cat.name}>{cat.name}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <TextField
-          label="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          fullWidth
-          margin="normal"
-        />
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Type</InputLabel>
-          <Select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-          >
-            <MenuItem value="expense">Expense</MenuItem>
-            <MenuItem value="income">Income</MenuItem>
-          </Select>
-        </FormControl>
-        <DatePicker
-          selected={date}
-          onChange={(date) => setDate(date)}
-          dateFormat="MM/dd/yyyy"
-          placeholderText="Select Date"
-          customInput={<TextField fullWidth margin="normal" label="Date" />}
-        />
-        <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
-          Add
-        </Button>
-      </Box>
-    </Box>
+            Add Transaction
+          </Button>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
 

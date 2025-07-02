@@ -5,7 +5,8 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import TransactionForm from './TransactionForm';
 import TransactionList from './TransactionList';
 import { useNavigate } from 'react-router-dom';
-import { Container, Typography, Box, Alert, Button } from '@mui/material';
+import { Container, Typography, Box, Card, CardContent, Grid, Alert } from '@mui/material';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -20,6 +21,7 @@ function Dashboard() {
       const token = localStorage.getItem('token');
       if (!token) {
         setError('Please log in to view the dashboard');
+        navigate('/login');
         return;
       }
       const res = await axios.get('http://localhost:5000/api/transactions/by-category', {
@@ -34,12 +36,13 @@ function Dashboard() {
             label: 'Spending by Category',
             data,
             backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+            borderColor: '#ffffff',
+            borderWidth: 2,
           },
         ],
       });
       setError(null);
     } catch (error) {
-      console.error('Fetch chart data error:', error);
       setError(error.response?.data?.message || 'Failed to fetch chart data');
     }
   };
@@ -53,7 +56,6 @@ function Dashboard() {
       });
       setSummary(res.data);
     } catch (error) {
-      console.error('Fetch summary error:', error);
       setError(error.response?.data?.message || 'Failed to fetch summary');
     }
   };
@@ -68,41 +70,56 @@ function Dashboard() {
     fetchSummary();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
-  };
-
   return (
-    <Container maxWidth="md">
-      <Box sx={{ mt: 4, mb: 4 }}>
-        <Typography variant="h4" gutterBottom align="center">
-          Dashboard
-        </Typography>
-        <Button
-          variant="outlined"
-          onClick={handleLogout}
-          sx={{ position: 'absolute', top: 80, right: 16 }}
-        >
-          Logout
-        </Button>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        <Box sx={{ mb: 4, textAlign: 'center' }}>
-          <Typography variant="h6">Summary</Typography>
-          <Typography>Total Income: ${summary.totalIncome}</Typography>
-          <Typography>Total Expenses: ${summary.totalExpenses}</Typography>
-          <Typography>Balance: ${summary.balance}</Typography>
-        </Box>
-        <Box sx={{ maxWidth: 400, mx: 'auto', mb: 4 }}>
-          {chartData.labels.length > 0 ? (
-            <Pie data={chartData} />
-          ) : (
-            <Typography>No expense data available. Add some transactions!</Typography>
-          )}
-        </Box>
-        <TransactionForm onAddTransaction={handleAddTransaction} />
-        <TransactionList />
-      </Box>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Typography variant="h4" gutterBottom align="center">
+        Dashboard
+      </Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Summary
+              </Typography>
+              <Typography>Total Income: ${summary.totalIncome.toFixed(2)}</Typography>
+              <Typography>Total Expenses: ${summary.totalExpenses.toFixed(2)}</Typography>
+              <Typography>Balance: ${summary.balance.toFixed(2)}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={8}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Spending by Category
+              </Typography>
+              <Box sx={{ maxWidth: 500, mx: 'auto' }}>
+                {chartData.labels.length > 0 ? (
+                  <Pie data={chartData} options={{ maintainAspectRatio: false }} />
+                ) : (
+                  <Typography>No expense data available. Add some transactions!</Typography>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <TransactionForm onAddTransaction={handleAddTransaction} />
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <TransactionList />
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
     </Container>
   );
 }

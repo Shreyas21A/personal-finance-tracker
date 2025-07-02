@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-
+const auth = require('../middleware/auth');
 // Register
 router.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
@@ -41,5 +41,13 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
+// New validate route
+router.get('/validate', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    res.json({ user });
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+});
 module.exports = router;
