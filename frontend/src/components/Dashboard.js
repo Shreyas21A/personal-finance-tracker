@@ -20,7 +20,6 @@ function Dashboard() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        setError('Please log in to view the dashboard');
         navigate('/login');
         return;
       }
@@ -43,20 +42,31 @@ function Dashboard() {
       });
       setError(null);
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to fetch chart data');
+      if (error.response?.status === 401) {
+        navigate('/login');
+      } else {
+        setError(error.response?.data?.message || 'Failed to fetch chart data');
+      }
     }
   };
 
   const fetchSummary = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        navigate('/login');
+        return;
+      }
       const res = await axios.get('http://localhost:5000/api/transactions/summary', {
         headers: { 'x-auth-token': token },
       });
       setSummary(res.data);
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to fetch summary');
+      if (error.response?.status === 401) {
+        navigate('/login');
+      } else {
+        setError(error.response?.data?.message || 'Failed to fetch summary');
+      }
     }
   };
 
@@ -71,31 +81,38 @@ function Dashboard() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="xl" sx={{ mt: 6, mb: 6 }}>
       <Typography variant="h4" gutterBottom align="center">
         Dashboard
       </Typography>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+      <Grid container spacing={4}>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ minHeight: 250 }}>
+            <CardContent sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
                 Summary
               </Typography>
-              <Typography>Total Income: ${summary.totalIncome.toFixed(2)}</Typography>
-              <Typography>Total Expenses: ${summary.totalExpenses.toFixed(2)}</Typography>
-              <Typography>Balance: ${summary.balance.toFixed(2)}</Typography>
+              <Typography variant="body1" sx={{ mb: 1 }}>
+                Total Income: <strong>${summary.totalIncome.toFixed(2)}</strong>
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 1 }}>
+                Total Expenses: <strong>${summary.totalExpenses.toFixed(2)}</strong>
+              </Typography>
+              <Typography variant="body1">
+                Balance: <strong>${summary.balance.toFixed(2)}</strong>
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Spending by Category
-              </Typography>
-              <Box sx={{ maxWidth: 500, mx: 'auto' }}>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ minHeight: 250 }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <BarChartIcon color="primary" sx={{ mr: 1 }} />
+                <Typography variant="h6">Spending by Category</Typography>
+              </Box>
+              <Box sx={{ height: 300 }}>
                 {chartData.labels.length > 0 ? (
                   <Pie data={chartData} options={{ maintainAspectRatio: false }} />
                 ) : (
@@ -107,14 +124,14 @@ function Dashboard() {
         </Grid>
         <Grid item xs={12}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: 3 }}>
               <TransactionForm onAddTransaction={handleAddTransaction} />
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: 3 }}>
               <TransactionList />
             </CardContent>
           </Card>

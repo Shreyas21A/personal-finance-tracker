@@ -3,31 +3,44 @@ import axios from 'axios';
 import { Container, Typography, Box, TextField, Button, List, ListItem, Card, CardContent, ListItemText } from '@mui/material';
 import CategoryIcon from '@mui/icons-material/Category';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { useNavigate } from 'react-router-dom';
 
 function Categories() {
   const [categories, setCategories] = useState([]);
   const [name, setName] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const token = localStorage.getItem('token');
-        if (!token) return;
+        if (!token) {
+          navigate('/login');
+          return;
+        }
         const res = await axios.get('http://localhost:5000/api/categories', {
           headers: { 'x-auth-token': token },
         });
         setCategories(res.data);
       } catch (error) {
-        alert('Failed to fetch categories: ' + (error.response?.data?.message || 'Server error'));
+        if (error.response?.status === 401) {
+          navigate('/login');
+        } else {
+          alert('Failed to fetch categories: ' + (error.response?.data?.message || 'Server error'));
+        }
       }
     };
     fetchCategories();
-  }, []);
+  }, [navigate]);
 
   const handleAdd = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
       const res = await axios.post(
         'http://localhost:5000/api/categories',
         { name },
@@ -36,19 +49,31 @@ function Categories() {
       setCategories([...categories, res.data]);
       setName('');
     } catch (error) {
-      alert('Failed to add category: ' + (error.response?.data?.message || 'Server error'));
+      if (error.response?.status === 401) {
+        navigate('/login');
+      } else {
+        alert('Failed to add category: ' + (error.response?.data?.message || 'Server error'));
+      }
     }
   };
 
   const handleDelete = async (id) => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
       await axios.delete(`http://localhost:5000/api/categories/${id}`, {
         headers: { 'x-auth-token': token },
       });
       setCategories(categories.filter((category) => category._id !== id));
     } catch (error) {
-      alert('Failed to delete category: ' + (error.response?.data?.message || 'Server error'));
+      if (error.response?.status === 401) {
+        navigate('/login');
+      } else {
+        alert('Failed to delete category: ' + (error.response?.data?.message || 'Server error'));
+      }
     }
   };
 

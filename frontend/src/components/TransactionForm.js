@@ -4,6 +4,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { TextField, Select, MenuItem, Button, Box, Typography, FormControl, InputLabel, Card, CardContent } from '@mui/material';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
+import { useNavigate } from 'react-router-dom';
 
 function TransactionForm({ onAddTransaction }) {
   const [amount, setAmount] = useState('');
@@ -12,26 +13,39 @@ function TransactionForm({ onAddTransaction }) {
   const [type, setType] = useState('expense');
   const [date, setDate] = useState(new Date());
   const [categories, setCategories] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/login');
+          return;
+        }
         const res = await axios.get('http://localhost:5000/api/categories', {
           headers: { 'x-auth-token': token },
         });
         setCategories(res.data);
       } catch (error) {
-        alert('Failed to fetch categories: ' + (error.response?.data?.message || 'Server error'));
+        if (error.response?.status === 401) {
+          navigate('/login');
+        } else {
+          alert('Failed to fetch categories: ' + (error.response?.data?.message || 'Server error'));
+        }
       }
     };
     fetchCategories();
-  }, []);
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
       const res = await axios.post(
         'http://localhost:5000/api/transactions',
         { amount, category, description, type, date },
@@ -44,7 +58,11 @@ function TransactionForm({ onAddTransaction }) {
       setType('expense');
       setDate(new Date());
     } catch (error) {
-      alert('Failed to add transaction: ' + (error.response?.data?.message || 'Server error'));
+      if (error.response?.status === 401) {
+        navigate('/login');
+      } else {
+        alert('Failed to add transaction: ' + (error.response?.data?.message || 'Server error'));
+      }
     }
   };
 

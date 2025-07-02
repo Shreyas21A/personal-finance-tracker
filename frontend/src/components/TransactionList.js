@@ -5,6 +5,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { Box, Typography, List, ListItem, Card, CardContent, Button, Select, MenuItem, FormControl, InputLabel, TextField, Grid } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { useNavigate } from 'react-router-dom';
 
 function TransactionList() {
   const [transactions, setTransactions] = useState([]);
@@ -13,11 +14,16 @@ function TransactionList() {
   const [filterType, setFilterType] = useState('all');
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [categories, setCategories] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/login');
+          return;
+        }
         const [transRes, catRes] = await Promise.all([
           axios.get('http://localhost:5000/api/transactions', {
             headers: { 'x-auth-token': token },
@@ -46,21 +52,33 @@ function TransactionList() {
         setTransactions(sortedTransactions);
         setCategories(catRes.data);
       } catch (error) {
-        alert('Failed to fetch transactions: ' + (error.response?.data?.message || 'Server error'));
+        if (error.response?.status === 401) {
+          navigate('/login');
+        } else {
+          alert('Failed to fetch transactions: ' + (error.response?.data?.message || 'Server error'));
+        }
       }
     };
     fetchData();
-  }, [sortBy, sortOrder, filterType]);
+  }, [sortBy, sortOrder, filterType, navigate]);
 
   const handleDelete = async (id) => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
       await axios.delete(`http://localhost:5000/api/transactions/${id}`, {
         headers: { 'x-auth-token': token },
       });
       setTransactions(transactions.filter((transaction) => transaction._id !== id));
     } catch (error) {
-      alert('Failed to delete transaction: ' + (error.response?.data?.message || 'Server error'));
+      if (error.response?.status === 401) {
+        navigate('/login');
+      } else {
+        alert('Failed to delete transaction: ' + (error.response?.data?.message || 'Server error'));
+      }
     }
   };
 
@@ -72,6 +90,10 @@ function TransactionList() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
       const res = await axios.put(
         `http://localhost:5000/api/transactions/${editingTransaction._id}`,
         editingTransaction,
@@ -82,7 +104,11 @@ function TransactionList() {
       );
       setEditingTransaction(null);
     } catch (error) {
-      alert('Failed to update transaction: ' + (error.response?.data?.message || 'Server error'));
+      if (error.response?.status === 401) {
+        navigate('/login');
+      } else {
+        alert('Failed to update transaction: ' + (error.response?.data?.message || 'Server error'));
+      }
     }
   };
 
@@ -95,7 +121,7 @@ function TransactionList() {
       <Typography variant="h6" gutterBottom>
         Transactions
       </Typography>
-      <Grid container spacing={2} sx={{ mb: 2 }}>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={4}>
           <FormControl fullWidth>
             <InputLabel>Sort By</InputLabel>
@@ -127,7 +153,7 @@ function TransactionList() {
         </Grid>
       </Grid>
       {editingTransaction && (
-        <Card sx={{ mb: 2 }}>
+        <Card sx={{ mb: 3, p: 2 }}>
           <CardContent>
             <Typography variant="h6">Edit Transaction</Typography>
             <Box component="form" onSubmit={handleUpdate}>
@@ -182,7 +208,7 @@ function TransactionList() {
                 dateFormat="MM/dd/yyyy"
                 customInput={<TextField fullWidth margin="normal" label="Date" variant="outlined" />}
               />
-              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+              <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                 <Button type="submit" variant="contained" color="secondary" startIcon={<EditIcon />}>
                   Update
                 </Button>
@@ -194,25 +220,24 @@ function TransactionList() {
           </CardContent>
         </Card>
       )}
-      <List>
+      <List sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {transactions.map((transaction) => (
-          <ListItem key={transaction._id} sx={{ py: 1 }}>
-            <Card sx={{ width: '100%', bgcolor: transaction.amount > 100 ? '#ffebee' : 'inherit' }}>
-              <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <ListItem key={transaction._id} disablePadding>
+            <Card sx={{ width: '100%', minHeight: 80, bgcolor: transaction.amount > 100 ? '#ffebee' : 'inherit' }}>
+              <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
                 <Box>
                   <Typography variant="body1">
-                    {transaction.description || 'No description'} - ${transaction.amount.toFixed(2)}
+                    {transaction.description || 'No description'} - <strong>${transaction.amount.toFixed(2)}</strong>
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {transaction.category}, {transaction.type} - {new Date(transaction.date).toLocaleDateString()}
                   </Typography>
                 </Box>
-                <Box>
+                <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
                     variant="contained"
                     color="primary"
                     startIcon={<EditIcon />}
-                    sx={{ mr: 1 }}
                     onClick={() => handleEdit(transaction)}
                   >
                     Edit
