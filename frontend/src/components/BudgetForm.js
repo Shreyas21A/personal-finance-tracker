@@ -1,21 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import axios from 'axios';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import { TextField, Select, MenuItem, Button, Box, Typography, FormControl, InputLabel, Card, CardContent, Alert, Grid, CircularProgress } from '@mui/material';
+import { TextField, Select, MenuItem, Button, Grid, Box, Typography, FormControl, InputLabel, Card, CardContent, Alert, CircularProgress } from '@mui/material';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
-function TransactionForm({ onAddTransaction }) {
+function BudgetForm({ onAddBudget }) {
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
-      amount: '',
       category: '',
-      description: '',
-      type: 'expense',
-      date: new Date(),
+      amount: '',
+      period: 'monthly',
     },
   });
   const [categories, setCategories] = useState([]);
@@ -53,18 +49,18 @@ function TransactionForm({ onAddTransaction }) {
         return;
       }
       const res = await axios.post(
-        'http://localhost:5000/api/transactions',
+        'http://localhost:5000/api/budgets',
         data,
         { headers: { 'x-auth-token': token } }
       );
-      onAddTransaction(res.data);
+      onAddBudget(res.data);
       reset();
       setError(null);
     } catch (error) {
       if (error.response?.status === 401) {
         navigate('/login');
       } else {
-        setError('Failed to add transaction: ' + (error.response?.data?.message || 'Server error'));
+        setError(error.response?.data?.message || 'Failed to add budget');
       }
     }
   };
@@ -74,31 +70,12 @@ function TransactionForm({ onAddTransaction }) {
       <Card sx={{ maxWidth: 500, mx: 'auto' }}>
         <CardContent>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <AddCircleIcon color="primary" sx={{ mr: 1, fontSize: 32 }} />
-            <Typography variant="h6">Add Transaction</Typography>
+            <AddCircleIcon color="primary" sx={{ mr: 1, fontSize: 32 }} aria-hidden="true" />
+            <Typography variant="h6">Set Budget</Typography>
           </Box>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Box component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <Controller
-                  name="amount"
-                  control={control}
-                  rules={{ required: 'Amount is required', min: { value: 0, message: 'Amount must be positive' } }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Amount"
-                      type="number"
-                      fullWidth
-                      variant="outlined"
-                      error={!!errors.amount}
-                      helperText={errors.amount?.message}
-                      aria-label="Transaction amount"
-                    />
-                  )}
-                />
-              </Grid>
               <Grid item xs={12}>
                 <Controller
                   name="category"
@@ -107,7 +84,7 @@ function TransactionForm({ onAddTransaction }) {
                   render={({ field }) => (
                     <FormControl fullWidth error={!!errors.category}>
                       <InputLabel>Category</InputLabel>
-                      <Select {...field} aria-label="Transaction category">
+                      <Select {...field} aria-label="Budget category">
                         <MenuItem value="">Select Category</MenuItem>
                         {categories.map((cat) => (
                           <MenuItem key={cat._id} value={cat.name}>{cat.name}</MenuItem>
@@ -120,45 +97,34 @@ function TransactionForm({ onAddTransaction }) {
               </Grid>
               <Grid item xs={12}>
                 <Controller
-                  name="description"
+                  name="amount"
                   control={control}
+                  rules={{ required: 'Amount is required', min: { value: 0, message: 'Amount must be positive' } }}
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="Description"
+                      label="Budget Amount"
+                      type="number"
                       fullWidth
                       variant="outlined"
-                      aria-label="Transaction description"
+                      error={!!errors.amount}
+                      helperText={errors.amount?.message}
+                      aria-label="Budget amount"
                     />
                   )}
                 />
               </Grid>
               <Grid item xs={12}>
                 <Controller
-                  name="type"
+                  name="period"
                   control={control}
                   render={({ field }) => (
                     <FormControl fullWidth>
-                      <InputLabel>Type</InputLabel>
-                      <Select {...field} aria-label="Transaction type">
-                        <MenuItem value="expense">Expense</MenuItem>
-                        <MenuItem value="income">Income</MenuItem>
+                      <InputLabel>Period</InputLabel>
+                      <Select {...field} aria-label="Budget period">
+                        <MenuItem value="monthly">Monthly</MenuItem>
                       </Select>
                     </FormControl>
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Controller
-                  name="date"
-                  control={control}
-                  render={({ field }) => (
-                    <DatePicker
-                      selected={field.value}
-                      onChange={field.onChange}
-                      dateFormat="MM/dd/yyyy"
-                      customInput={<TextField fullWidth label="Date" variant="outlined" aria-label="Transaction date" />}
-                    />
                   )}
                 />
               </Grid>
@@ -170,9 +136,9 @@ function TransactionForm({ onAddTransaction }) {
                   fullWidth
                   disabled={isSubmitting}
                   startIcon={isSubmitting ? <CircularProgress size={20} /> : <AddCircleIcon />}
-                  aria-label="Add transaction"
+                  aria-label="Set budget"
                 >
-                  {isSubmitting ? 'Adding...' : 'Add Transaction'}
+                  {isSubmitting ? 'Setting...' : 'Set Budget'}
                 </Button>
               </Grid>
             </Grid>
@@ -183,4 +149,4 @@ function TransactionForm({ onAddTransaction }) {
   );
 }
 
-export default TransactionForm;
+export default BudgetForm;

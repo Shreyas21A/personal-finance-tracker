@@ -7,6 +7,9 @@ const transactionSchema = new mongoose.Schema({
   description: { type: String },
   type: { type: String, enum: ['income', 'expense'], required: true },
   date: { type: Date, default: Date.now },
-});
+  budgetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Budget', optional: true },
+}, { timestamps: true });
+
+transactionSchema.index({ user: 1, date: -1, category: 1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

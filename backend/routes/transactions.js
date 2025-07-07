@@ -3,17 +3,42 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Transaction = require('../models/Transaction');
 const mongoose = require('mongoose');
+const Joi = require('joi');
+const sanitize = require('mongo-sanitize');
+
+// Validation schema
+const transactionSchema = Joi.object({
+  amount: Joi.number().positive().required().messages({
+    'number.positive': 'Amount must be positive',
+    'any.required': 'Amount is required',
+  }),
+  category: Joi.string().min(1).required().messages({
+    'string.min': 'Category cannot be empty',
+    'any.required': 'Category is required',
+  }),
+  description: Joi.string().allow('').optional(),
+  type: Joi.string().valid('income', 'expense').required().messages({
+    'any.only': 'Type must be either income or expense',
+    'any.required': 'Type is required',
+  }),
+  date: Joi.date().required().messages({
+    'any.required': 'Date is required',
+  }),
+});
 
 // Create transaction
 router.post('/', auth, async (req, res) => {
-  const { amount, category, description, type } = req.body;
+  const { error } = transactionSchema.validate(req.body);
+  if (error) return res.status(400).json({ message: error.details[0].message });
+
   try {
     const transaction = new Transaction({
-      user: req.user.id,
-      amount,
-      category,
-      description,
-      type,
+      user: sanitize(req.user.id),
+      amount: req.body.amount,
+      category: sanitize(req.body.category),
+      description: sanitize(req.body.description),
+      type: req.body.type,
+      date: req.body.date,
     });
     await transaction.save();
     res.json(transaction);
@@ -26,7 +51,7 @@ router.post('/', auth, async (req, res) => {
 // Get all transactions
 router.get('/', auth, async (req, res) => {
   try {
-    const transactions = await Transaction.find({ user: req.user.id }).sort({ date: -1 });
+    const transactions = await Transaction.find({ user: sanitize(req.user.id) }).sort({ date: -1 });
     res.json(transactions);
   } catch (error) {
     console.error('Get transactions error:', error);
@@ -36,16 +61,24 @@ router.get('/', auth, async (req, res) => {
 
 // Update transaction
 router.put('/:id', auth, async (req, res) => {
-  const { amount, category, description, type } = req.body;
+  const { error } = transactionSchema.validate(req.body);
+  if (error) return res.status(400).json({ message: error.details[0].message });
+
   try {
-    let transaction = await Transaction.findById(req.params.id);
+    let transaction = await Transaction.findById(sanitize(req.params.id));
     if (!transaction) return res.status(404).json({ message: 'Transaction not found' });
     if (transaction.user.toString() !== req.user.id) {
       return res.status(401).json({ message: 'Not authorized' });
     }
     transaction = await Transaction.findByIdAndUpdate(
-      req.params.id,
-      { amount, category, description, type },
+      sanitize(req.params.id),
+      {
+        amount: req.body.amount,
+        category: sanitize(req.body.category),
+        description: sanitize(req.body.description),
+        type: req.body.type,
+        date: req.body.date,
+      },
       { new: true }
     );
     res.json(transaction);
@@ -58,12 +91,12 @@ router.put('/:id', auth, async (req, res) => {
 // Delete transaction
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const transaction = await Transaction.findById(req.params.id);
+    const transaction = await Transaction.findById(sanitize(req.params.id));
     if (!transaction) return res.status(404).json({ message: 'Transaction not found' });
     if (transaction.user.toString() !== req.user.id) {
       return res.status(401).json({ message: 'Not authorized' });
     }
-    await Transaction.findByIdAndDelete(req.params.id);
+    await Transaction.findByIdAndDelete(sanitize(req.params.id));
     res.json({ message: 'Transaction deleted' });
   } catch (error) {
     console.error('Delete transaction error:', error);
@@ -75,7 +108,7 @@ router.delete('/:id', auth, async (req, res) => {
 router.get('/by-category', auth, async (req, res) => {
   try {
     const transactions = await Transaction.aggregate([
-      { $match: { user: new mongoose.Types.ObjectId(req.user.id), type: 'expense' } },
+      { $match: { user: new mongoose.Types.ObjectId(sanitize(req.user.id)), type: 'expense' } },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
     ]);
     res.json(transactions);
@@ -89,7 +122,7 @@ router.get('/by-category', auth, async (req, res) => {
 router.get('/summary', auth, async (req, res) => {
   try {
     const transactions = await Transaction.aggregate([
-      { $match: { user: new mongoose.Types.ObjectId(req.user.id) } },
+      { $match: { user: new mongoose.Types.ObjectId(sanitize(req.user.id)) } },
       {
         $group: {
           _id: null,
@@ -103,6 +136,55 @@ router.get('/summary', auth, async (req, res) => {
     res.json(summary);
   } catch (error) {
     console.error('Summary error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get spending trends (monthly expenses)
+router.get('/trends', auth, async (req, res) => {
+  try {
+    const transactions = await Transaction.aggregate([
+      { $match: { user: new mongoose.Types.ObjectId(sanitize(req.user.id)), type: 'expense' } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$date' } },
+          total: { $sum: '$amount' },
+        },
+      },
+      { $sort: { _id: 1 } },
+      {
+        $project: {
+          month: '$_id',
+          total: 1,
+          _id: 0,
+        },
+      },
+    ]);
+    res.json(transactions);
+  } catch (error) {
+    console.error('Trends error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Export transactions as CSV
+router.get('/export', auth, async (req, res) => {
+  try {
+    const transactions = await Transaction.find({ user: sanitize(req.user.id) }).sort({ date: -1 });
+    const headers = ['Date,Amount,Type,Category,Description'];
+    const rows = transactions.map(t => [
+      new Date(t.date).toLocaleDateString(),
+      t.amount.toFixed(2),
+      t.type,
+      t.category,
+      t.description || 'No description',
+    ].join(','));
+    const csvContent = [...headers, ...rows].join('\n');
+    res.header('Content-Type', 'text/csv');
+    res.attachment('transactions.csv');
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Export error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
