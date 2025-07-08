@@ -1,24 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { DataGrid } from '@mui/x-data-grid';
-import { Box, Typography, Select, MenuItem, FormControl, InputLabel, Button, IconButton, Alert, useTheme } from '@mui/material';
+import { Box, Typography, Select, Grid, MenuItem, FormControl, InputLabel, Button, IconButton, Alert, useTheme, Dialog, DialogContent, DialogTitle, DialogActions, TextField, CircularProgress } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ClearIcon from '@mui/icons-material/Clear';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useForm, Controller } from 'react-hook-form';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 
 function TransactionList({ filterCategory, setFilterCategory }) {
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [filterType, setFilterType] = useState('all');
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [transactionToEdit, setTransactionToEdit] = useState(null);
   const navigate = useNavigate();
   const theme = useTheme();
+
+  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
+    defaultValues: {
+      amount: '',
+      category: '',
+      description: '',
+      type: 'expense',
+      date: new Date(),
+    },
+  });
 
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
@@ -51,8 +68,47 @@ function TransactionList({ filterCategory, setFilterCategory }) {
         headers: { 'x-auth-token': token },
       });
       setTransactions(transactions.filter((t) => t.id !== id));
+      setSuccess('Transaction deleted successfully!');
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to delete transaction');
+    }
+  };
+
+  const handleEdit = (transaction) => {
+    setTransactionToEdit(transaction);
+    reset({
+      amount: transaction.amount,
+      category: transaction.category,
+      description: transaction.description || '',
+      type: transaction.type,
+      date: new Date(transaction.date),
+    });
+    setOpenEditDialog(true);
+  };
+
+  const onEditSubmit = async (data) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+      const updatedTransaction = await axios.put(
+        `http://localhost:5000/api/transactions/${transactionToEdit.id}`,
+        data,
+        { headers: { 'x-auth-token': token } }
+      );
+      setTransactions(transactions.map((t) => (t.id === transactionToEdit.id ? { ...updatedTransaction.data, id: updatedTransaction.data._id } : t)));
+      setSuccess('Transaction updated successfully!');
+      setOpenEditDialog(false);
+      setTransactionToEdit(null);
+      reset({ amount: '', category: '', description: '', type: 'expense', date: new Date() });
+    } catch (error) {
+      if (error.response?.status === 401) {
+        navigate('/login');
+      } else {
+        setError(error.response?.data?.message || 'Failed to update transaction');
+      }
     }
   };
 
@@ -130,7 +186,7 @@ function TransactionList({ filterCategory, setFilterCategory }) {
         <>
           <IconButton
             color="primary"
-            onClick={() => navigate(`/edit-transaction/${params.row.id}`)}
+            onClick={() => handleEdit(params.row)}
             aria-label={`Edit transaction ${params.row.description}`}
           >
             <EditIcon />
@@ -165,6 +221,8 @@ function TransactionList({ filterCategory, setFilterCategory }) {
             </IconButton>
           </Box>
         )}
+        {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>{success}</Alert>}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <FormControl sx={{ minWidth: 120 }}>
@@ -213,7 +271,6 @@ function TransactionList({ filterCategory, setFilterCategory }) {
             Export CSV
           </Button>
         </Box>
-        {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
         <Box sx={{ height: 400, width: '100%' }}>
           <DataGrid
             rows={transactions}
@@ -231,6 +288,132 @@ function TransactionList({ filterCategory, setFilterCategory }) {
             }}
           />
         </Box>
+        <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Edit Transaction</DialogTitle>
+          <DialogContent>
+            <Box component="form" onSubmit={handleSubmit(onEditSubmit)} sx={{ mt: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Controller
+                    name="amount"
+                    control={control}
+                    rules={{ required: 'Amount is required', min: { value: 0, message: 'Amount must be positive' } }}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label="Amount"
+                        type="number"
+                        fullWidth
+                        variant="outlined"
+                        error={!!errors.amount}
+                        helperText={errors.amount?.message}
+                        aria-label="Transaction amount"
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Controller
+                    name="category"
+                    control={control}
+                    rules={{ required: 'Category is required' }}
+                    render={({ field }) => (
+                      <FormControl fullWidth error={!!errors.category}>
+                        <InputLabel>Category</InputLabel>
+                        <Select {...field} aria-label="Transaction category">
+                          <MenuItem value="">Select Category</MenuItem>
+                          {categories.map((cat) => (
+                            <MenuItem key={cat._id} value={cat.name}>{cat.name}</MenuItem>
+                          ))}
+                        </Select>
+                        {errors.category && <Typography color="error">{errors.category.message}</Typography>}
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Controller
+                    name="description"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label="Description"
+                        fullWidth
+                        variant="outlined"
+                        aria-label="Transaction description"
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Controller
+                    name="type"
+                    control={control}
+                    rules={{ required: 'Type is required' }}
+                    render={({ field }) => (
+                      <FormControl fullWidth error={!!errors.type}>
+                        <InputLabel>Type</InputLabel>
+                        <Select {...field} aria-label="Transaction type">
+                          <MenuItem value="income">Income</MenuItem>
+                          <MenuItem value="expense">Expense</MenuItem>
+                        </Select>
+                        {errors.type && <Typography color="error">{errors.type.message}</Typography>}
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Controller
+                    name="date"
+                    control={control}
+                    rules={{ required: 'Date is required' }}
+                    render={({ field }) => (
+                      <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <DatePicker
+                          label="Date"
+                          value={field.value}
+                          onChange={field.onChange}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              fullWidth
+                              error={!!errors.date}
+                              helperText={errors.date?.message}
+                              aria-label="Transaction date"
+                            />
+                          )}
+                        />
+                      </LocalizationProvider>
+                    )}
+                  />
+                </Grid>
+              </Grid>
+              <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="secondary"
+                  fullWidth
+                  disabled={isSubmitting}
+                  startIcon={isSubmitting ? <CircularProgress size={20} /> : <EditIcon />}
+                  aria-label="Update transaction"
+                >
+                  {isSubmitting ? 'Updating...' : 'Update Transaction'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  fullWidth
+                  onClick={() => setOpenEditDialog(false)}
+                  aria-label="Cancel edit"
+                >
+                  Cancel
+                </Button>
+              </Box>
+            </Box>
+          </DialogContent>
+        </Dialog>
       </Box>
     </motion.div>
   );
