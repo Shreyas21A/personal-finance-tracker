@@ -77,4 +77,47 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// Update budget
+router.put('/:id', auth, async (req, res) => {
+  const { error } = budgetSchema.validate(req.body);
+  if (error) return res.status(400).json({ message: error.details[0].message });
+
+  try {
+    let budget = await Budget.findById(sanitize(req.params.id));
+    if (!budget) return res.status(404).json({ message: 'Budget not found' });
+    if (budget.user.toString() !== req.user.id) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+    budget = await Budget.findByIdAndUpdate(
+      sanitize(req.params.id),
+      {
+        category: sanitize(req.body.category),
+        amount: req.body.amount,
+        period: req.body.period,
+      },
+      { new: true }
+    );
+    res.json(budget);
+  } catch (error) {
+    console.error('Update budget error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete budget
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const budget = await Budget.findById(sanitize(req.params.id));
+    if (!budget) return res.status(404).json({ message: 'Budget not found' });
+    if (budget.user.toString() !== req.user.id) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+    await Budget.findByIdAndDelete(sanitize(req.params.id));
+    res.json({ message: 'Budget deleted successfully' });
+  } catch (error) {
+    console.error('Delete budget error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

@@ -1,22 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import axios from 'axios';
-import { TextField, Select, MenuItem, Button, Grid, Box, Typography, FormControl, InputLabel, Card, CardContent, Alert, CircularProgress } from '@mui/material';
+import { TextField, Grid, Select, MenuItem, Button, Box, Typography, FormControl, InputLabel, Card, CardContent, Alert, CircularProgress } from '@mui/material';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
+import EditIcon from '@mui/icons-material/Edit';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
-function BudgetForm({ onAddBudget }) {
+function BudgetForm({ onAddBudget, budgetToEdit }) {
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
-      category: '',
-      amount: '',
-      period: 'monthly',
+      category: budgetToEdit?.category || '',
+      amount: budgetToEdit?.amount || '',
+      period: budgetToEdit?.period || 'monthly',
     },
   });
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const navigate = useNavigate();
+  const isEditing = !!budgetToEdit;
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -48,19 +51,30 @@ function BudgetForm({ onAddBudget }) {
         navigate('/login');
         return;
       }
-      const res = await axios.post(
-        'http://localhost:5000/api/budgets',
-        data,
-        { headers: { 'x-auth-token': token } }
-      );
+      let res;
+      if (isEditing) {
+        res = await axios.put(
+          `http://localhost:5000/api/budgets/${budgetToEdit._id}`,
+          data,
+          { headers: { 'x-auth-token': token } }
+        );
+        setSuccess('Budget updated successfully!');
+      } else {
+        res = await axios.post(
+          'http://localhost:5000/api/budgets',
+          data,
+          { headers: { 'x-auth-token': token } }
+        );
+        setSuccess('Budget created successfully!');
+      }
       onAddBudget(res.data);
-      reset();
+      reset({ category: '', amount: '', period: 'monthly' });
       setError(null);
     } catch (error) {
       if (error.response?.status === 401) {
         navigate('/login');
       } else {
-        setError(error.response?.data?.message || 'Failed to add budget');
+        setError(error.response?.data?.message || `Failed to ${isEditing ? 'update' : 'add'} budget`);
       }
     }
   };
@@ -70,10 +84,15 @@ function BudgetForm({ onAddBudget }) {
       <Card sx={{ maxWidth: 500, mx: 'auto' }}>
         <CardContent>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <AddCircleIcon color="primary" sx={{ mr: 1, fontSize: 32 }} aria-hidden="true" />
-            <Typography variant="h6">Set Budget</Typography>
+            {isEditing ? (
+              <EditIcon color="primary" sx={{ mr: 1, fontSize: 32 }} aria-hidden="true" />
+            ) : (
+              <AddCircleIcon color="primary" sx={{ mr: 1, fontSize: 32 }} aria-hidden="true" />
+            )}
+            <Typography variant="h6">{isEditing ? 'Edit Budget' : 'Set Budget'}</Typography>
           </Box>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
           <Box component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={2}>
               <Grid item xs={12}>
@@ -135,10 +154,10 @@ function BudgetForm({ onAddBudget }) {
                   color="secondary"
                   fullWidth
                   disabled={isSubmitting}
-                  startIcon={isSubmitting ? <CircularProgress size={20} /> : <AddCircleIcon />}
-                  aria-label="Set budget"
+                  startIcon={isSubmitting ? <CircularProgress size={20} /> : isEditing ? <EditIcon /> : <AddCircleIcon />}
+                  aria-label={isEditing ? 'Update budget' : 'Set budget'}
                 >
-                  {isSubmitting ? 'Setting...' : 'Set Budget'}
+                  {isSubmitting ? 'Processing...' : isEditing ? 'Update Budget' : 'Set Budget'}
                 </Button>
               </Grid>
             </Grid>

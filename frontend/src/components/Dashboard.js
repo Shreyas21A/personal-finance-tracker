@@ -2,17 +2,20 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, LineElement, PointElement, LinearScale, CategoryScale } from 'chart.js';
 import { Pie, Line } from 'react-chartjs-2';
-import { Box, Typography, Card, CardContent, Grid, Tabs, Tab, Skeleton, Alert, useTheme, useMediaQuery, LinearProgress, IconButton, Button, Dialog, DialogContent } from '@mui/material';
+import { Box, Typography, Card, CardContent, Grid, Tabs, Tab, Skeleton, Alert, useTheme, useMediaQuery, LinearProgress, IconButton, Button, Dialog, DialogContent, DialogTitle, DialogActions } from '@mui/material';
 import { motion } from 'framer-motion';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate } from 'react-router-dom';
 import TransactionForm from './TransactionForm';
 import TransactionList from './TransactionList';
 import BudgetForm from './BudgetForm';
+
 ChartJS.register(ArcElement, Tooltip, Legend, LineElement, PointElement, LinearScale, CategoryScale);
 
 function Dashboard() {
@@ -21,10 +24,14 @@ function Dashboard() {
   const [summary, setSummary] = useState({ totalIncome: 0, totalExpenses: 0, balance: 0 });
   const [budgets, setBudgets] = useState([]);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [openBudgetForm, setOpenBudgetForm] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [filterCategory, setFilterCategory] = useState(null);
+  const [openBudgetForm, setOpenBudgetForm] = useState(false);
+  const [budgetToEdit, setBudgetToEdit] = useState(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [budgetToDelete, setBudgetToDelete] = useState(null);
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = !useMediaQuery(theme.breakpoints.up('md'));
@@ -97,11 +104,6 @@ function Dashboard() {
     fetchData();
   };
 
-  const handleAddBudget = () => {
-  fetchData();
-  setOpenBudgetForm(false);
-  };
-
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
@@ -115,13 +117,53 @@ function Dashboard() {
     }
   };
 
+  const handleAddBudget = () => {
+    fetchData();
+    setOpenBudgetForm(false);
+    setBudgetToEdit(null);
+  };
+
+  const handleEditBudget = (budget) => {
+    setBudgetToEdit(budget);
+    setOpenBudgetForm(true);
+  };
+
+  const handleOpenDeleteDialog = (budget) => {
+    setBudgetToDelete(budget);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleDeleteBudget = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+      await axios.delete(`http://localhost:5000/api/budgets/${budgetToDelete._id}`, {
+        headers: { 'x-auth-token': token },
+      });
+      setSuccess(`Budget for ${budgetToDelete.category} deleted successfully!`);
+      fetchData();
+      setOpenDeleteDialog(false);
+      setBudgetToDelete(null);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        navigate('/login');
+      } else {
+        setError(error.response?.data?.message || 'Failed to delete budget');
+      }
+    }
+  };
+
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, mt: 8 }}>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <Typography variant="h1" align="center" sx={{ mb: 4, fontSize: { xs: '1.8rem', md: '2.2rem' } }} aria-label="Dashboard title">
           Dashboard
         </Typography>
-        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+        {error && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>{success}</Alert>}
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
@@ -256,51 +298,85 @@ function Dashboard() {
               </motion.div>
             </Grid>
             <Grid item xs={12}>
-  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.6 }}>
-    <Card sx={{ p: 3, background: `linear-gradient(to right, ${theme.palette.primary.light}, ${theme.palette.secondary.light})` }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <AddCircleIcon color="primary" sx={{ mr: 1, fontSize: 32 }} aria-hidden="true" />
-          <Typography variant="h6">Budgets</Typography>
-          <Button
-            variant="outlined"
-            color="primary"
-            size="small"
-            startIcon={<AddCircleIcon />}
-            onClick={() => setOpenBudgetForm(true)}
-            sx={{ ml: 'auto' }}
-            aria-label="Open set budget form"
-          >
-            Add Budget
-          </Button>
-        </Box>
-        {loading ? (
-          <Skeleton variant="rectangular" height={100} />
-        ) : budgets.length > 0 ? (
-          budgets.map(budget => (
-            <Box key={budget._id} sx={{ mb: 2 }}>
-              <Typography variant="body1">{budget.category}: ${budget.spent.toFixed(2)} / ${budget.amount.toFixed(2)}</Typography>
-              <LinearProgress
-                variant="determinate"
-                value={(budget.spent / budget.amount) * 100}
-                color={budget.spent > budget.amount ? 'error' : 'primary'}
-                sx={{ height: 10, borderRadius: 5 }}
-                aria-label={`Budget progress for ${budget.category}`}
-              />
-            </Box>
-          ))
-        ) : (
-          <Typography>No budgets set. Add a budget!</Typography>
-        )}
-      </CardContent>
-    </Card>
-    <Dialog open={openBudgetForm} onClose={() => setOpenBudgetForm(false)} maxWidth="sm" fullWidth>
-      <DialogContent>
-        <BudgetForm onAddBudget={handleAddBudget} />
-      </DialogContent>
-    </Dialog>
-  </motion.div>
-</Grid>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.6 }}>
+                <Card sx={{ p: 3, background: `linear-gradient(to right, ${theme.palette.primary.light}, ${theme.palette.secondary.light})` }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <AddCircleIcon color="primary" sx={{ mr: 1, fontSize: 32 }} aria-hidden="true" />
+                      <Typography variant="h6">Budgets</Typography>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        size="small"
+                        startIcon={<AddCircleIcon />}
+                        onClick={() => setOpenBudgetForm(true)}
+                        sx={{ ml: 'auto' }}
+                        aria-label="Open set budget form"
+                      >
+                        Add Budget
+                      </Button>
+                    </Box>
+                    {loading ? (
+                      <Skeleton variant="rectangular" height={100} />
+                    ) : budgets.length > 0 ? (
+                      budgets.map(budget => (
+                        <Box key={budget._id} sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                          <Box sx={{ flexGrow: 1 }}>
+                            <Typography variant="body1">{budget.category}: ${budget.spent.toFixed(2)} / ${budget.amount.toFixed(2)}</Typography>
+                            <LinearProgress
+                              variant="determinate"
+                              value={(budget.spent / budget.amount) * 100}
+                              color={budget.spent > budget.amount ? 'error' : 'primary'}
+                              sx={{ height: 10, borderRadius: 5 }}
+                              aria-label={`Budget progress for ${budget.category}`}
+                            />
+                          </Box>
+                          <Box>
+                            <IconButton
+                              color="primary"
+                              onClick={() => handleEditBudget(budget)}
+                              aria-label={`Edit budget for ${budget.category}`}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton
+                              color="error"
+                              onClick={() => handleOpenDeleteDialog(budget)}
+                              aria-label={`Delete budget for ${budget.category}`}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                      ))
+                    ) : (
+                      <Typography>No budgets set. Add a budget!</Typography>
+                    )}
+                  </CardContent>
+                </Card>
+                <Dialog open={openBudgetForm} onClose={() => { setOpenBudgetForm(false); setBudgetToEdit(null); }} maxWidth="sm" fullWidth>
+                  <DialogContent>
+                    <BudgetForm onAddBudget={handleAddBudget} budgetToEdit={budgetToEdit} />
+                  </DialogContent>
+                </Dialog>
+                <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} maxWidth="sm" fullWidth>
+                  <DialogTitle>Confirm Delete Budget</DialogTitle>
+                  <DialogContent>
+                    <Typography>
+                      Are you sure you want to delete the budget for {budgetToDelete?.category}?
+                    </Typography>
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={() => setOpenDeleteDialog(false)} color="primary" aria-label="Cancel delete">
+                      Cancel
+                    </Button>
+                    <Button onClick={handleDeleteBudget} color="error" aria-label="Confirm delete">
+                      Delete
+                    </Button>
+                  </DialogActions>
+                </Dialog>
+              </motion.div>
+            </Grid>
           </Grid>
         )}
         {tabValue === 1 && (
@@ -318,7 +394,7 @@ function Dashboard() {
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                 <Card>
                   <CardContent sx={{ p: 3 }}>
-                    <TransactionList filterCategory={filterCategory} />
+                    <TransactionList filterCategory={filterCategory} setFilterCategory={setFilterCategory} />
                   </CardContent>
                 </Card>
               </motion.div>
