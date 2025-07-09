@@ -38,10 +38,11 @@ router.post('/', auth, async (req, res) => {
       category: sanitize(req.body.category),
       description: sanitize(req.body.description),
       type: req.body.type,
-      date: req.body.date,
+      date: new Date(req.body.date),
     });
-    await transaction.save();
-    res.json(transaction);
+    const savedTransaction = await transaction.save();
+    console.log('POST /api/transactions:', savedTransaction);
+    res.json(savedTransaction);
   } catch (error) {
     console.error('Create transaction error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -52,6 +53,7 @@ router.post('/', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     const transactions = await Transaction.find({ user: sanitize(req.user.id) }).sort({ date: -1 });
+    console.log('GET /api/transactions:', transactions);
     res.json(transactions);
   } catch (error) {
     console.error('Get transactions error:', error);
@@ -77,10 +79,11 @@ router.put('/:id', auth, async (req, res) => {
         category: sanitize(req.body.category),
         description: sanitize(req.body.description),
         type: req.body.type,
-        date: req.body.date,
+        date: new Date(req.body.date),
       },
       { new: true }
     );
+    console.log('PUT /api/transactions/:id:', transaction);
     res.json(transaction);
   } catch (error) {
     console.error('Update transaction error:', error);
@@ -97,6 +100,7 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(401).json({ message: 'Not authorized' });
     }
     await Transaction.findByIdAndDelete(sanitize(req.params.id));
+    console.log('DELETE /api/transactions/:id:', transaction);
     res.json({ message: 'Transaction deleted' });
   } catch (error) {
     console.error('Delete transaction error:', error);
@@ -111,6 +115,7 @@ router.get('/by-category', auth, async (req, res) => {
       { $match: { user: new mongoose.Types.ObjectId(sanitize(req.user.id)), type: 'expense' } },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
     ]);
+    console.log('GET /api/transactions/by-category:', transactions);
     res.json(transactions);
   } catch (error) {
     console.error('By-category error:', error);
@@ -133,6 +138,7 @@ router.get('/summary', auth, async (req, res) => {
     ]);
     const summary = transactions[0] || { totalIncome: 0, totalExpenses: 0 };
     summary.balance = summary.totalIncome - summary.totalExpenses;
+    console.log('GET /api/transactions/summary:', summary);
     res.json(summary);
   } catch (error) {
     console.error('Summary error:', error);
@@ -160,6 +166,7 @@ router.get('/trends', auth, async (req, res) => {
         },
       },
     ]);
+    console.log('GET /api/transactions/trends:', transactions);
     res.json(transactions);
   } catch (error) {
     console.error('Trends error:', error);
@@ -171,6 +178,7 @@ router.get('/trends', auth, async (req, res) => {
 router.get('/export', auth, async (req, res) => {
   try {
     const transactions = await Transaction.find({ user: sanitize(req.user.id) }).sort({ date: -1 });
+    console.log('GET /api/transactions/export:', transactions);
     const headers = ['Date,Amount,Type,Category,Description'];
     const rows = transactions.map(t => [
       new Date(t.date).toLocaleDateString(),

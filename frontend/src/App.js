@@ -12,6 +12,7 @@ import Dashboard from './components/Dashboard';
 import Categories from './components/Categories';
 import TransactionList from './components/TransactionList';
 import theme from './theme';
+import Transactions from './components/Transactions';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -194,7 +195,7 @@ function App() {
               <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
               <Route path="/register" element={<Register setIsAuthenticated={setIsAuthenticated} />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/transactions" element={<TransactionList />} />
+              <Route path="/transactions" element={<Transactions />} />
               <Route path="/categories" element={<Categories />} />
               <Route path="/" element={<Dashboard />} />
             </Routes>

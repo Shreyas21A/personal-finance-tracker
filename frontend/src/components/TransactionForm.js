@@ -45,29 +45,33 @@ function TransactionForm({ onAddTransaction }) {
     fetchCategories();
   }, [navigate]);
 
-  const onSubmit = async (data) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
-      const res = await axios.post(
-        'http://localhost:5000/api/transactions',
-        data,
-        { headers: { 'x-auth-token': token } }
-      );
-      onAddTransaction(res.data);
-      reset();
-      setError(null);
-    } catch (error) {
-      if (error.response?.status === 401) {
-        navigate('/login');
-      } else {
-        setError('Failed to add transaction: ' + (error.response?.data?.message || 'Server error'));
-      }
+const onSubmit = async (data) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
     }
-  };
+    const payload = {
+      ...data,
+      date: data.date.toISOString(), // Convert date to ISO string
+    };
+    const res = await axios.post(
+      'http://localhost:5000/api/transactions',
+      payload,
+      { headers: { 'x-auth-token': token } }
+    );
+    onAddTransaction(res.data);
+    reset();
+    setError(null);
+  } catch (error) {
+    if (error.response?.status === 401) {
+      navigate('/login');
+    } else {
+      setError('Failed to add transaction: ' + (error.response?.data?.message || 'Server error'));
+    }
+  }
+};
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
